@@ -736,44 +736,72 @@ function preloadHistory() {
     function toggleTag(el) { el.classList.toggle('selected'); }
 
     function sendFeedback() {
-        if (!new URLSearchParams(window.location.search).get('name')) {
-            alert('Chỉ gửi được ý kiến trong link chia tiền của một bữa nhậu cụ thể!');
-            return;
-        }
-        
-        const name = document.getElementById('reviewerName').value.trim();
-        const comment = document.getElementById('feedbackComment').value.trim();
-        if (!name) { alert('Vui lòng nhập tên của bạn!'); return; }
-
-        const selectedTags = Array.from(document.querySelectorAll('.feedback-tags .tag.selected')).map(t => t.innerText).join(', ');
-
-        const payload = {
-            type: 'FEEDBACK',
-            date: document.getElementById('partyDate').value,
-            partyName: document.getElementById('partyName').value,
-            location: document.getElementById('partyLocation').value,
-            reviewer: name,
-            stars: currentRating + ' sao',
-            tags: selectedTags,
-            comment: comment
-        };
-
-        alert('Đang gửi đánh giá...');
-
-        fetch(SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-        })
-        .then(() => {
-            alert(`Cảm ơn ${name} đã gửi ý kiến!`);
-            document.getElementById('feedbackComment').value = '';
-        })
-        .catch(() => {
-            alert(`Cảm ơn ${name} đã gửi ý kiến!`);
-            document.getElementById('feedbackComment').value = '';
-        });
+    const qp = new URLSearchParams(window.location.search);
+    if (!qp.get('name') && !qp.get('p')) {
+        alert('Chỉ gửi được ý kiến trong link chia tiền của một bữa nhậu cụ thể!');
+        return;
     }
+
+    const partyName = document.getElementById('partyName').value.trim();
+    const partyDate = document.getElementById('partyDate').value;
+    if (!partyName) {
+        alert('Dữ liệu bữa nhậu đang tải, vui lòng đợi vài giây rồi gửi lại!');
+        return;
+    }
+
+    const name = document.getElementById('reviewerName').value.trim();
+    const comment = document.getElementById('feedbackComment').value.trim();
+    if (!name) { alert('Vui lòng nhập tên của bạn!'); return; }
+
+    const doneKey = 'fb_done_' + shortId({ name: partyName, date: partyDate });
+    let alreadySent = false;
+    try { alreadySent = !!localStorage.getItem(doneKey); } catch (e) {}
+    if (alreadySent) {
+        alert('Bạn đã gửi ý kiến cho bữa này rồi, mỗi người chỉ được gửi 1 lần!');
+        return;
+    }
+
+    const selectedTags = Array.from(document.querySelectorAll('.feedback-tags .tag.selected')).map(t => t.innerText).join(', ');
+
+    const payload = {
+        type: 'FEEDBACK',
+        date: partyDate,
+        partyName: partyName,
+        location: document.getElementById('partyLocation').value,
+        reviewer: name,
+        stars: currentRating + ' sao',
+        tags: selectedTags,
+        comment: comment
+    };
+
+    const btn = document.querySelector('.btn-send-feedback');
+    if (btn) btn.disabled = true;
+
+    const markDone = () => { try { localStorage.setItem(doneKey, '1'); } catch (e) {} };
+    const thanks = () => {
+        markDone();
+        alert(`Cảm ơn ${name} đã gửi ý kiến!`);
+        document.getElementById('feedbackComment').value = '';
+    };
+
+    fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res && res.duplicate) {
+            markDone();
+            alert(`"${name}" đã gửi ý kiến cho bữa này rồi, mỗi người chỉ được gửi 1 lần!`);
+        } else {
+            thanks();
+        }
+    })
+    .catch(() => { thanks(); })
+    .finally(() => { if (btn) btn.disabled = false; });
+    }
+    
     function buildCurrentShareUrl() {
         const partyName = encodeURIComponent(document.getElementById('partyName').value || '');
         const partyDate = encodeURIComponent(document.getElementById('partyDate').value || '');
