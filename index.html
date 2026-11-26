@@ -1077,7 +1077,9 @@ function toggleHistoryDetail(elementId) {
     }
 }
 function fixShareUrl(url) {
-    return String(url || '').replace(/&T2/g, '-T2');
+    url = String(url || '').replace(/&T2/g, '-T2');
+    const q = url.includes('?') ? url.split('?')[1] : '';
+    return window.location.origin + window.location.pathname + (q ? '?' + q : '');
 }
 function buildShareUrlFromHistory(item) {
     if (item.shareUrl) return fixShareUrl(item.shareUrl);
