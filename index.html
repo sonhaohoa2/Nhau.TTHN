@@ -819,16 +819,24 @@ function preloadHistory() {
     }
 
     function copyWebLink() {
-        if (!document.getElementById('partyName').value.trim()) {
+    if (!document.getElementById('partyName').value.trim()) {
         alert('Hãy mở một bữa từ "Xem Lịch Sử" (nút 📂 Mở bữa này) rồi mới copy link!');
         return;
-        }
-        const shareUrl = buildCurrentShareUrl();
-        copyTextToClipboard(shareUrl).then(res => {
-            if (res) alert("Đã copy link bữa nhậu thành công!\nBạn có thể dán (Paste) để gửi ngay vào nhóm Zalo.");
-            else prompt("Sao chép link dưới đây:", shareUrl);
-        });
     }
+
+    const cur = {
+        name: document.getElementById('partyName').value.trim(),
+        date: cleanDateFormat(document.getElementById('partyDate').value)
+    };
+    const pid = shortId(cur);
+    const savedInSheet = (cachedHistory || []).some(it => shortId(it) === pid);
+    const shareUrl = savedInSheet ? buildShortLink(cur) : buildCurrentShareUrl();
+
+    copyTextToClipboard(shareUrl).then(res => {
+        if (res) alert("Đã copy link bữa nhậu thành công!");
+        else prompt("Sao chép link dưới đây:", shareUrl);
+    });
+}
 
     function saveToGoogleSheets() {
         const partyName = document.getElementById('partyName').value.trim();
