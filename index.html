@@ -1094,7 +1094,35 @@ function buildShareUrlFromHistory(item) {
     const bill = parseFloat(String(item.bill).replace(/[^0-9]/g, '')) || 0;
     return `${base}?name=${enc(item.name || '')}&date=${enc(item.date || '')}&loc=${enc(item.loc || '')}&bill=${bill}&b2=0&fasm=&fss=&note=${enc(item.note || '')}&m=${parts.join(',')}`;
 }
+function shortId(item) {
+    const s = String(item.name || '').toLowerCase().replace(/\s+/g, '') + '|' + String(item.date || '');
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+}
 
+function buildShortLink(item) {
+    return window.location.origin + window.location.pathname + '?p=' + shortId(item);
+}
+
+function loadPartyByShortId(pid) {
+    const find = list => (list || []).find(it => shortId(it) === pid);
+    const apply = it => loadPartyFromUrl(encodeURIComponent(buildShareUrlFromHistory(it)));
+
+    const fromCache = find(cachedHistory);
+    if (fromCache) apply(fromCache);
+
+    loadHistory(data => {
+        if (!data) {
+            if (!fromCache) alert('Không tải được dữ liệu bữa nhậu. Vui lòng tải lại trang!');
+            return;
+        }
+        const f = find(data);
+        if (f && !fromCache) apply(f);
+        else if (!f && !fromCache) alert('Không tìm thấy bữa nhậu này!');
+    });
+}
+    
 function openHistoryParty(i) {
     const item = (window.currentHistoryList || [])[i];
     if (!item) return;
@@ -1104,7 +1132,7 @@ function openHistoryParty(i) {
 function copyHistoryLink(i) {
     const item = (window.currentHistoryList || [])[i];
     if (!item) return;
-    const url = buildShareUrlFromHistory(item);
+    const url = buildShortLink(item);
     copyTextToClipboard(url).then(ok => {
         if (ok) alert('Đã copy link bữa "' + item.name + '"!\nDán vào Zalo để gửi mọi người.');
         else prompt('Sao chép link dưới đây:', url);
@@ -1291,6 +1319,8 @@ function loadPartyFromUrl(encodedUrl) {
         if (!new URLSearchParams(window.location.search).get('name')) {
             switchMode('user');
         }
+        const pid = new URLSearchParams(window.location.search).get('p');
+        if (pid) loadPartyByShortId(pid);
     });
 </script>
 </body>
